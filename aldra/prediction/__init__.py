@@ -1,0 +1,1 @@
+"""Domain prediction interface."""
