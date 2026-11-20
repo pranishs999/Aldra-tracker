@@ -1,0 +1,986 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ALDRA Development Tracker</title>
+    <style>
+        :root {
+            --bg-deep: #0a192f;
+            --bg-surface: #112240;
+            --bg-surface-light: #233554;
+            --accent: #64ffda;
+            --accent-hover: #52e0c4;
+            --text-main: #ccd6f6;
+            --text-muted: #8892b0;
+            --success: #4ade80;
+            --danger: #ef4444;
+            --border: #233554;
+            --font-main: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: var(--font-main);
+            background-color: var(--bg-deep);
+            color: var(--text-main);
+            display: flex;
+            height: 100vh;
+            overflow: hidden;
+            line-height: 1.6;
+        }
+
+        /* Layout */
+        #sidebar {
+            width: 250px;
+            background-color: var(--bg-surface);
+            border-right: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            padding: 1.5rem 0;
+            transition: transform 0.3s ease;
+            z-index: 100;
+        }
+
+        #main-content {
+            flex: 1;
+            overflow-y: auto;
+            padding: 2rem;
+            position: relative;
+        }
+
+        .brand {
+            padding: 0 1.5rem 1.5rem;
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: var(--accent);
+            border-bottom: 1px solid var(--border);
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        /* Navigation */
+        .nav-item {
+            padding: 0.75rem 1.5rem;
+            cursor: pointer;
+            color: var(--text-muted);
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .nav-item:hover {
+            color: var(--accent);
+            background-color: var(--bg-surface-light);
+        }
+
+        .nav-item.active {
+            color: var(--accent);
+            background-color: rgba(100, 255, 218, 0.1);
+            border-right: 3px solid var(--accent);
+        }
+
+        /* Views */
+        .view { display: none; }
+        .view.active { display: block; animation: fadeIn 0.3s ease; }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Typography & Utility */
+        h1 { font-size: 2rem; margin-bottom: 0.5rem; color: var(--text-main); }
+        h2 { font-size: 1.5rem; margin-bottom: 1rem; color: var(--text-main); }
+        h3 { font-size: 1.2rem; color: var(--text-main); }
+        p.subtitle { color: var(--text-muted); margin-bottom: 2rem; }
+        
+        .card {
+            background-color: var(--bg-surface);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; }
+        .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.5rem; }
+        @media (max-width: 768px) {
+            .grid-2, .grid-3 { grid-template-columns: 1fr; }
+            body { flex-direction: column; }
+            #sidebar { width: 100%; height: auto; border-right: none; border-bottom: 1px solid var(--border); padding: 1rem 0; flex-direction: row; flex-wrap: wrap; justify-content: center; }
+            .brand { border-bottom: none; margin-bottom: 0; padding: 0.5rem 1rem; width: 100%; }
+            .nav-item { padding: 0.5rem 1rem; border-right: none; border-bottom: 2px solid transparent; }
+            .nav-item.active { border-right: none; border-bottom: 2px solid var(--accent); }
+            #main-content { padding: 1rem; }
+        }
+
+        /* Form Elements */
+        input[type="text"], input[type="date"], select, textarea {
+            width: 100%;
+            background-color: var(--bg-deep);
+            border: 1px solid var(--border);
+            color: var(--text-main);
+            padding: 0.75rem;
+            border-radius: 4px;
+            font-family: inherit;
+            margin-bottom: 1rem;
+        }
+        input:focus, select:focus, textarea:focus {
+            outline: none;
+            border-color: var(--accent);
+        }
+        label { display: block; margin-bottom: 0.5rem; color: var(--text-muted); font-size: 0.9rem; }
+
+        .btn {
+            background-color: transparent;
+            color: var(--accent);
+            border: 1px solid var(--accent);
+            padding: 0.5rem 1rem;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-family: inherit;
+            font-weight: bold;
+        }
+        .btn:hover { background-color: rgba(100, 255, 218, 0.1); }
+        .btn-primary { background-color: var(--accent); color: var(--bg-deep); }
+        .btn-primary:hover { background-color: var(--accent-hover); }
+        .btn-danger { color: var(--danger); border-color: var(--danger); }
+        .btn-danger:hover { background-color: rgba(239, 68, 68, 0.1); }
+
+        /* Progress Bars */
+        .progress-container { width: 100%; background-color: var(--bg-deep); border-radius: 4px; height: 8px; margin-top: 0.5rem; overflow: hidden; }
+        .progress-bar { height: 100%; background-color: var(--accent); transition: width 0.3s ease; }
+        
+        .stat-value { font-size: 2.5rem; font-weight: bold; color: var(--accent); }
+        .stat-label { color: var(--text-muted); font-size: 0.9rem; text-transform: uppercase; letter-spacing: 1px; }
+
+        /* Roadmap Styles */
+        .phase-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            cursor: pointer;
+            padding: 1rem;
+            background-color: var(--bg-surface-light);
+            border-radius: 4px;
+            margin-bottom: 0.5rem;
+        }
+        .phase-body { display: none; padding: 1rem; border: 1px solid var(--border); border-top: none; border-radius: 0 0 4px 4px; margin-bottom: 1.5rem; margin-top: -0.5rem; }
+        .phase-body.open { display: block; }
+        .task-item {
+            display: flex;
+            align-items: flex-start;
+            padding: 1rem 0;
+            border-bottom: 1px solid var(--border);
+            gap: 1rem;
+        }
+        .task-item:last-child { border-bottom: none; padding-bottom: 0; }
+        .task-content { flex: 1; }
+        .task-title { font-weight: bold; margin-bottom: 0.5rem; }
+        .task-title.completed { color: var(--success); text-decoration: line-through; opacity: 0.8; }
+        .task-controls { display: flex; gap: 0.5rem; align-items: center; margin-bottom: 0.5rem; }
+        .task-controls select { margin-bottom: 0; width: auto; padding: 0.25rem; font-size: 0.85rem; }
+        .task-notes { width: 100%; font-size: 0.85rem; padding: 0.5rem; margin-bottom: 0; background-color: var(--bg-deep); }
+        
+        /* Checkbox styling */
+        input[type="checkbox"] {
+            appearance: none; width: 20px; height: 20px; border: 2px solid var(--text-muted); border-radius: 4px; cursor: pointer; position: relative; margin-top: 2px;
+        }
+        input[type="checkbox"]:checked { background-color: var(--success); border-color: var(--success); }
+        input[type="checkbox"]:checked::after {
+            content: '✓'; position: absolute; color: var(--bg-deep); font-size: 14px; font-weight: bold; left: 3px; top: -1px;
+        }
+
+        /* Memories */
+        .memory-toolbar { display: flex; gap: 1rem; margin-bottom: 1.5rem; flex-wrap: wrap; }
+        .memory-toolbar input, .memory-toolbar select { margin-bottom: 0; flex: 1; min-width: 200px; }
+        .memory-card { border-left: 4px solid var(--accent); }
+        .memory-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.5rem; }
+        .memory-category { font-size: 0.75rem; background-color: var(--bg-surface-light); padding: 0.2rem 0.5rem; border-radius: 4px; color: var(--accent); }
+        .memory-date { font-size: 0.8rem; color: var(--text-muted); }
+        .memory-actions { display: flex; gap: 0.5rem; margin-top: 1rem; justify-content: flex-end; }
+        
+        /* Modal */
+        #modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(10, 25, 47, 0.85); z-index: 1000; align-items: center; justify-content: center; }
+        #modal-overlay.active { display: flex; }
+        .modal-content { background-color: var(--bg-surface); padding: 2rem; border-radius: 8px; width: 100%; max-width: 500px; border: 1px solid var(--border); }
+        
+        /* Activity Log */
+        .log-entry { padding: 0.75rem 0; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; }
+        .log-time { font-size: 0.8rem; color: var(--text-muted); }
+    </style>
+</head>
+<body>
+
+    <nav id="sidebar">
+        <div class="brand">ALDRA</div>
+        <div class="nav-item active" data-target="view-dashboard">Dashboard</div>
+        <div class="nav-item" data-target="view-roadmap">Development Roadmap</div>
+        <div class="nav-item" data-target="view-memory">Project Memory</div>
+        <div class="nav-item" data-target="view-activity">Activity Log</div>
+        <div class="nav-item" data-target="view-settings">Backup & Settings</div>
+    </nav>
+
+    <main id="main-content">
+        <!-- Dashboard View -->
+        <div id="view-dashboard" class="view active">
+            <h1>ALDRA Dashboard</h1>
+            <p class="subtitle">Adaptive Lightweight Domain-based Routing Architecture</p>
+
+            <div class="grid-3">
+                <div class="card">
+                    <div class="stat-label">Overall Progress</div>
+                    <div class="stat-value" id="dash-overall-percent">0%</div>
+                    <div class="progress-container"><div class="progress-bar" id="dash-overall-bar" style="width: 0%"></div></div>
+                </div>
+                <div class="card">
+                    <div class="stat-label">Tasks Completed</div>
+                    <div class="stat-value"><span id="dash-tasks-completed">0</span> / <span id="dash-tasks-total">0</span></div>
+                    <div style="color: var(--text-muted); margin-top: 0.5rem;" id="dash-tasks-remaining">0 remaining</div>
+                </div>
+                <div class="card">
+                    <div class="stat-label">Current Active Phase</div>
+                    <div class="stat-value" style="font-size: 1.5rem; margin-top: 0.5rem;" id="dash-active-phase">Phase 1</div>
+                    <div style="color: var(--text-muted); margin-top: 0.5rem;" id="dash-last-activity">Last Activity: N/A</div>
+                </div>
+            </div>
+
+            <div class="grid-2">
+                <div class="card">
+                    <h2>Phase Progress</h2>
+                    <div id="dash-phase-progress-list"></div>
+                </div>
+                <div class="card">
+                    <h2>Recent Activity</h2>
+                    <div id="dash-recent-activity"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Roadmap View -->
+        <div id="view-roadmap" class="view">
+            <h1>Development Roadmap</h1>
+            <p class="subtitle">Fixed 8-Phase Experimental Objective Plan</p>
+            <div id="roadmap-container"></div>
+        </div>
+
+        <!-- Project Memory View -->
+        <div id="view-memory" class="view">
+            <h1>Project Memory</h1>
+            <p class="subtitle">Persistent knowledge base for ALDRA development</p>
+            
+            <div class="memory-toolbar">
+                <input type="text" id="mem-search" placeholder="Search memories...">
+                <select id="mem-filter">
+                    <option value="All">All Categories</option>
+                    <option value="Research Decisions">Research Decisions</option>
+                    <option value="Development Notes">Development Notes</option>
+                    <option value="Technical Information">Technical Information</option>
+                    <option value="Experiments">Experiments</option>
+                    <option value="Errors and Solutions">Errors and Solutions</option>
+                    <option value="Important Findings">Important Findings</option>
+                    <option value="Future Ideas">Future Ideas</option>
+                    <option value="Next Steps">Next Steps</option>
+                </select>
+                <button class="btn btn-primary" id="btn-new-memory">+ New Memory</button>
+            </div>
+            
+            <div id="memories-container" class="grid-2"></div>
+        </div>
+
+        <!-- Activity Log View -->
+        <div id="view-activity" class="view">
+            <h1>Activity Log</h1>
+            <p class="subtitle">Chronological record of project actions</p>
+            <div class="card">
+                <div id="activity-container"></div>
+            </div>
+        </div>
+
+        <!-- Settings View -->
+        <div id="view-settings" class="view">
+            <h1>Backup & Settings</h1>
+            <p class="subtitle">Manage your local ALDRA development data</p>
+            <div class="card">
+                <h2>Export Data</h2>
+                <p style="margin-bottom: 1rem; color: var(--text-muted);">Download all your checklist progress, project memories, and activity logs as a JSON file.</p>
+                <button class="btn btn-primary" id="btn-export">Export to JSON</button>
+            </div>
+            <div class="card">
+                <h2>Import Data</h2>
+                <p style="margin-bottom: 1rem; color: var(--text-muted);">Restore your progress from a previous JSON backup. <strong>Warning: This will overwrite current data.</strong></p>
+                <input type="file" id="file-import" accept=".json" style="margin-bottom: 1rem; display: block;">
+                <button class="btn btn-danger" id="btn-import">Import & Overwrite</button>
+            </div>
+        </div>
+    </main>
+
+    <!-- Memory Modal -->
+    <div id="modal-overlay">
+        <div class="modal-content">
+            <h2 id="modal-title">New Memory</h2>
+            <input type="hidden" id="modal-mem-id">
+            
+            <label for="modal-mem-title">Title</label>
+            <input type="text" id="modal-mem-title" placeholder="e.g. TF-IDF Optimization Decision">
+            
+            <label for="modal-mem-category">Category</label>
+            <select id="modal-mem-category">
+                <option value="Research Decisions">Research Decisions</option>
+                <option value="Development Notes">Development Notes</option>
+                <option value="Technical Information">Technical Information</option>
+                <option value="Experiments">Experiments</option>
+                <option value="Errors and Solutions">Errors and Solutions</option>
+                <option value="Important Findings">Important Findings</option>
+                <option value="Future Ideas">Future Ideas</option>
+                <option value="Next Steps">Next Steps</option>
+            </select>
+            
+            <label for="modal-mem-desc">Description</label>
+            <textarea id="modal-mem-desc" rows="5" placeholder="Detailed notes..."></textarea>
+            
+            <div style="display: flex; gap: 1rem; justify-content: flex-end; margin-top: 1rem;">
+                <button class="btn" id="btn-modal-cancel">Cancel</button>
+                <button class="btn btn-primary" id="btn-modal-save">Save Memory</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- Fixed Roadmap Data ---
+        const ROADMAP_DATA = [
+            {
+                title: "Phase 1: Project Foundation",
+                tasks: [
+                    "Create project repository and folder structure.",
+                    "Set up Python environment and dependencies.",
+                    "Create configuration file.",
+                    "Implement logging and progress display.",
+                    "Define four domain labels: Mathematics, Science, Computer Science, General."
+                ]
+            },
+            {
+                title: "Phase 2: Dataset Engineering",
+                tasks: [
+                    "Collect domain-specific query samples.",
+                    "Create and validate dataset labels.",
+                    "Remove duplicate and invalid samples.",
+                    "Check class distribution and balance.",
+                    "Split data into training, validation and testing sets.",
+                    "Save dataset version and statistics."
+                ]
+            },
+            {
+                title: "Phase 3: Text Preprocessing",
+                tasks: [
+                    "Implement text cleaning.",
+                    "Normalize whitespace and text.",
+                    "Handle empty or invalid queries.",
+                    "Test preprocessing on sample queries.",
+                    "Display preprocessing progress and statistics."
+                ]
+            },
+            {
+                title: "Phase 4: Feature Extraction",
+                tasks: [
+                    "Implement TF-IDF vectorizer.",
+                    "Configure max_features = 320.",
+                    "Configure ngram_range = (1, 2).",
+                    "Enable sublinear_tf = True.",
+                    "Fit vectorizer using training data only.",
+                    "Transform validation and test data.",
+                    "Display vocabulary size and feature matrix dimensions.",
+                    "Save fitted vectorizer."
+                ]
+            },
+            {
+                title: "Phase 5: Classifier Development",
+                tasks: [
+                    "Build MLP architecture: 320 → 128 → 64 → 4.",
+                    "Implement ReLU hidden activations.",
+                    "Implement four-class output layer.",
+                    "Implement softmax probabilities.",
+                    "Verify trainable parameter count (target: 49,604).",
+                    "Implement domain prediction.",
+                    "Implement confidence extraction.",
+                    "Test forward pass and output dimensions."
+                ]
+            },
+            {
+                title: "Phase 6: Model Training",
+                tasks: [
+                    "Implement training and validation loops.",
+                    "Configure loss function and optimizer.",
+                    "Display epoch-by-epoch training loss.",
+                    "Display epoch-by-epoch accuracy.",
+                    "Display training progress and elapsed time.",
+                    "Monitor validation performance.",
+                    "Detect overfitting.",
+                    "Save best model checkpoint.",
+                    "Save training history and configuration."
+                ]
+            },
+            {
+                title: "Phase 7: Testing and Evaluation",
+                tasks: [
+                    "Load saved model and vectorizer.",
+                    "Evaluate using unseen test data.",
+                    "Display individual predictions and expected labels.",
+                    "Display confidence for each prediction.",
+                    "Calculate accuracy.",
+                    "Calculate macro-F1 score.",
+                    "Generate precision and recall report.",
+                    "Generate confusion matrix.",
+                    "Analyze incorrect predictions.",
+                    "Save evaluation results."
+                ]
+            },
+            {
+                title: "Phase 8: Prediction Interface",
+                tasks: [
+                    "Create query input interface.",
+                    "Load trained model and vectorizer.",
+                    "Predict one of four domains.",
+                    "Extract predicted-class confidence.",
+                    "Return clean JSON output.",
+                    "Handle invalid or empty input.",
+                    "Test multiple real-world queries.",
+                    "Document usage and limitations."
+                ]
+            }
+        ];
+
+        // --- Application State ---
+        let state = {
+            tasks: {}, // key: "p{phaseIndex}-t{taskIndex}", value: { status: "Pending", notes: "" }
+            memories: [],
+            activity: [],
+            lastActivity: null
+        };
+
+        // --- Core Functions ---
+        function loadState() {
+            try {
+                const stored = localStorage.getItem('aldra_state');
+                if (stored) {
+                    const parsed = JSON.parse(stored);
+                    state.tasks = parsed.tasks || {};
+                    state.memories = parsed.memories || [];
+                    state.activity = parsed.activity || [];
+                    state.lastActivity = parsed.lastActivity || null;
+                }
+            } catch (e) {
+                console.error("Error loading state from localStorage", e);
+            }
+        }
+
+        function saveState() {
+            try {
+                localStorage.setItem('aldra_state', JSON.stringify(state));
+            } catch (e) {
+                console.error("Error saving state to localStorage", e);
+                alert("Failed to save data. LocalStorage might be full or disabled.");
+            }
+        }
+
+        function logActivity(text) {
+            const entry = {
+                id: Date.now().toString(),
+                text: text,
+                timestamp: new Date().toISOString()
+            };
+            state.activity.unshift(entry);
+            if (state.activity.length > 200) state.activity.pop(); // Keep history bounded
+            state.lastActivity = entry.timestamp;
+            saveState();
+            renderDashboard();
+            renderActivity();
+        }
+
+        function el(tag, className = '', textContent = '') {
+            const element = document.createElement(tag);
+            if (className) element.className = className;
+            if (textContent) element.textContent = textContent;
+            return element;
+        }
+
+        function formatDate(isoString) {
+            if (!isoString) return 'N/A';
+            const d = new Date(isoString);
+            return d.toLocaleString(undefined, { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+        }
+
+        // --- Rendering Logic ---
+        function switchTab(targetId) {
+            document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+            document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+            
+            document.getElementById(targetId).classList.add('active');
+            document.querySelector(`.nav-item[data-target="${targetId}"]`).classList.add('active');
+            
+            if(targetId === 'view-dashboard') renderDashboard();
+            if(targetId === 'view-roadmap') renderRoadmap();
+            if(targetId === 'view-memory') renderMemories();
+            if(targetId === 'view-activity') renderActivity();
+        }
+
+        function renderDashboard() {
+            let totalTasks = 0;
+            let completedTasks = 0;
+            let currentActivePhase = "Phase 1: Project Foundation";
+            let phaseFound = false;
+
+            const phaseProgressList = document.getElementById('dash-phase-progress-list');
+            phaseProgressList.innerHTML = ''; // Safe clear
+
+            ROADMAP_DATA.forEach((phase, pIndex) => {
+                let phaseTotal = phase.tasks.length;
+                let phaseCompleted = 0;
+
+                phase.tasks.forEach((_, tIndex) => {
+                    totalTasks++;
+                    const key = `p${pIndex}-t${tIndex}`;
+                    if (state.tasks[key] && state.tasks[key].status === 'Completed') {
+                        completedTasks++;
+                        phaseCompleted++;
+                    }
+                });
+
+                const phasePercent = Math.round((phaseCompleted / phaseTotal) * 100);
+                if (phasePercent < 100 && !phaseFound) {
+                    currentActivePhase = phase.title;
+                    phaseFound = true;
+                }
+
+                const pDiv = el('div');
+                pDiv.style.marginBottom = '1rem';
+                
+                const labelDiv = el('div');
+                labelDiv.style.display = 'flex';
+                labelDiv.style.justifyContent = 'space-between';
+                labelDiv.style.fontSize = '0.9rem';
+                
+                const titleSpan = el('span', '', phase.title);
+                const pctSpan = el('span', '', `${phasePercent}%`);
+                labelDiv.appendChild(titleSpan);
+                labelDiv.appendChild(pctSpan);
+                
+                const barCont = el('div', 'progress-container');
+                const barInner = el('div', 'progress-bar');
+                barInner.style.width = `${phasePercent}%`;
+                if(phasePercent === 100) barInner.style.backgroundColor = 'var(--success)';
+                barCont.appendChild(barInner);
+
+                pDiv.appendChild(labelDiv);
+                pDiv.appendChild(barCont);
+                phaseProgressList.appendChild(pDiv);
+            });
+
+            if(!phaseFound) currentActivePhase = "All Phases Complete!";
+
+            const overallPercent = totalTasks === 0 ? 0 : Math.round((completedTasks / totalTasks) * 100);
+
+            document.getElementById('dash-overall-percent').textContent = `${overallPercent}%`;
+            document.getElementById('dash-overall-bar').style.width = `${overallPercent}%`;
+            document.getElementById('dash-tasks-total').textContent = totalTasks;
+            document.getElementById('dash-tasks-completed').textContent = completedTasks;
+            document.getElementById('dash-tasks-remaining').textContent = `${totalTasks - completedTasks} remaining`;
+            document.getElementById('dash-active-phase').textContent = currentActivePhase;
+            document.getElementById('dash-last-activity').textContent = `Last Activity: ${formatDate(state.lastActivity)}`;
+
+            // Recent activity in dashboard
+            const recentContainer = document.getElementById('dash-recent-activity');
+            recentContainer.innerHTML = '';
+            const recentActivities = state.activity.slice(0, 5);
+            if (recentActivities.length === 0) {
+                recentContainer.appendChild(el('p', 'subtitle', 'No activity yet.'));
+            } else {
+                recentActivities.forEach(act => {
+                    const div = el('div', 'log-entry');
+                    const text = el('span', '', act.text);
+                    const time = el('span', 'log-time', formatDate(act.timestamp));
+                    div.appendChild(text);
+                    div.appendChild(time);
+                    recentContainer.appendChild(div);
+                });
+            }
+        }
+
+        function renderRoadmap() {
+            const container = document.getElementById('roadmap-container');
+            container.innerHTML = '';
+
+            ROADMAP_DATA.forEach((phase, pIndex) => {
+                const pCard = el('div', 'card');
+                pCard.style.padding = '0';
+
+                const pHeader = el('div', 'phase-header');
+                const pTitle = el('h2', '', phase.title);
+                pTitle.style.marginBottom = '0';
+                
+                // Calculate phase completeness
+                let pComp = 0;
+                phase.tasks.forEach((_, tIndex) => {
+                    const key = `p${pIndex}-t${tIndex}`;
+                    if (state.tasks[key] && state.tasks[key].status === 'Completed') pComp++;
+                });
+                const pct = Math.round((pComp / phase.tasks.length) * 100);
+                const pStat = el('span', 'stat-label', `${pComp}/${phase.tasks.length} (${pct}%)`);
+                if(pct === 100) pStat.style.color = 'var(--success)';
+
+                pHeader.appendChild(pTitle);
+                pHeader.appendChild(pStat);
+
+                const pBody = el('div', 'phase-body');
+                // Open the first incomplete phase by default, or all if preferred. Let's keep them closed except the active one.
+                if (pct < 100 && !container.hasActivePhaseOpened) {
+                    pBody.classList.add('open');
+                    container.hasActivePhaseOpened = true;
+                }
+
+                pHeader.addEventListener('click', () => {
+                    pBody.classList.toggle('open');
+                });
+
+                phase.tasks.forEach((taskStr, tIndex) => {
+                    const key = `p${pIndex}-t${tIndex}`;
+                    const taskState = state.tasks[key] || { status: 'Pending', notes: '' };
+
+                    const tItem = el('div', 'task-item');
+                    
+                    const cbContainer = el('div');
+                    const cb = el('input');
+                    cb.type = 'checkbox';
+                    cb.checked = taskState.status === 'Completed';
+                    cbContainer.appendChild(cb);
+
+                    const tContent = el('div', 'task-content');
+                    const tTitle = el('div', 'task-title', taskStr);
+                    if (cb.checked) tTitle.classList.add('completed');
+
+                    const tControls = el('div', 'task-controls');
+                    const select = el('select');
+                    ['Pending', 'In Progress', 'Completed'].forEach(s => {
+                        const opt = el('option', '', s);
+                        opt.value = s;
+                        opt.selected = s === taskState.status;
+                        select.appendChild(opt);
+                    });
+
+                    const notes = el('input', 'task-notes');
+                    notes.type = 'text';
+                    notes.placeholder = 'Add notes here...';
+                    notes.value = taskState.notes;
+
+                    // Handlers
+                    const handleStatusChange = (newStatus) => {
+                        const oldStatus = state.tasks[key]?.status || 'Pending';
+                        if (!state.tasks[key]) state.tasks[key] = { notes: '' };
+                        state.tasks[key].status = newStatus;
+                        
+                        cb.checked = (newStatus === 'Completed');
+                        if (cb.checked) tTitle.classList.add('completed');
+                        else tTitle.classList.remove('completed');
+                        select.value = newStatus;
+
+                        if (newStatus === 'Completed' && oldStatus !== 'Completed') {
+                            logActivity(`Task completed: "${taskStr}"`);
+                            // Check if phase is completed
+                            let pAllDone = true;
+                            phase.tasks.forEach((_, checkTIdx) => {
+                                const checkKey = `p${pIndex}-t${checkTIdx}`;
+                                if (!state.tasks[checkKey] || state.tasks[checkKey].status !== 'Completed') pAllDone = false;
+                            });
+                            if(pAllDone) logActivity(`Phase completed: ${phase.title}`);
+                        } else if (newStatus !== 'Completed' && oldStatus === 'Completed') {
+                            logActivity(`Task reopened: "${taskStr}"`);
+                        } else {
+                            saveState();
+                        }
+                        
+                        // Update phase header stats
+                        let pC = 0;
+                        phase.tasks.forEach((_, cTIdx) => {
+                            const cKey = `p${pIndex}-t${cTIdx}`;
+                            if (state.tasks[cKey] && state.tasks[cKey].status === 'Completed') pC++;
+                        });
+                        const newPct = Math.round((pC / phase.tasks.length) * 100);
+                        pStat.textContent = `${pC}/${phase.tasks.length} (${newPct}%)`;
+                        pStat.style.color = newPct === 100 ? 'var(--success)' : 'var(--text-muted)';
+                    };
+
+                    cb.addEventListener('change', (e) => {
+                        handleStatusChange(e.target.checked ? 'Completed' : 'Pending');
+                    });
+
+                    select.addEventListener('change', (e) => {
+                        handleStatusChange(e.target.value);
+                    });
+
+                    notes.addEventListener('change', (e) => {
+                        if (!state.tasks[key]) state.tasks[key] = { status: 'Pending' };
+                        state.tasks[key].notes = e.target.value;
+                        saveState();
+                    });
+
+                    tControls.appendChild(select);
+                    
+                    tContent.appendChild(tTitle);
+                    tContent.appendChild(tControls);
+                    tContent.appendChild(notes);
+
+                    tItem.appendChild(cbContainer);
+                    tItem.appendChild(tContent);
+                    pBody.appendChild(tItem);
+                });
+
+                pCard.appendChild(pHeader);
+                pCard.appendChild(pBody);
+                container.appendChild(pCard);
+            });
+        }
+
+        function renderMemories() {
+            const container = document.getElementById('memories-container');
+            container.innerHTML = '';
+
+            const searchTerm = document.getElementById('mem-search').value.toLowerCase();
+            const filterCat = document.getElementById('mem-filter').value;
+
+            let filtered = state.memories.filter(m => {
+                const matchSearch = m.title.toLowerCase().includes(searchTerm) || m.description.toLowerCase().includes(searchTerm);
+                const matchCat = filterCat === 'All' || m.category === filterCat;
+                return matchSearch && matchCat;
+            });
+
+            if (filtered.length === 0) {
+                const emptyMsg = el('p', 'subtitle', 'No memories found.');
+                emptyMsg.style.gridColumn = '1 / -1';
+                container.appendChild(emptyMsg);
+                return;
+            }
+
+            // Sort newest first
+            filtered.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+
+            filtered.forEach(m => {
+                const card = el('div', 'card memory-card');
+                
+                const header = el('div', 'memory-header');
+                const title = el('h3', '', m.title);
+                const date = el('span', 'memory-date', formatDate(m.timestamp));
+                header.appendChild(title);
+                header.appendChild(date);
+                
+                const cat = el('span', 'memory-category', m.category);
+                
+                const desc = el('p', '', m.description);
+                desc.style.marginTop = '1rem';
+                desc.style.whiteSpace = 'pre-wrap';
+
+                const actions = el('div', 'memory-actions');
+                const btnEdit = el('button', 'btn', 'Edit');
+                const btnDel = el('button', 'btn btn-danger', 'Delete');
+
+                btnEdit.onclick = () => openMemoryModal(m.id);
+                btnDel.onclick = () => {
+                    if(confirm(`Are you sure you want to delete "${m.title}"?`)) {
+                        state.memories = state.memories.filter(mem => mem.id !== m.id);
+                        logActivity(`Memory deleted: "${m.title}"`);
+                        renderMemories();
+                    }
+                };
+
+                actions.appendChild(btnEdit);
+                actions.appendChild(btnDel);
+
+                card.appendChild(header);
+                card.appendChild(cat);
+                card.appendChild(desc);
+                card.appendChild(actions);
+
+                container.appendChild(card);
+            });
+        }
+
+        function renderActivity() {
+            const container = document.getElementById('activity-container');
+            container.innerHTML = '';
+            
+            if (state.activity.length === 0) {
+                container.appendChild(el('p', 'subtitle', 'No activity recorded yet.'));
+                return;
+            }
+
+            state.activity.forEach(act => {
+                const div = el('div', 'log-entry');
+                const text = el('span', '', act.text);
+                const time = el('span', 'log-time', formatDate(act.timestamp));
+                div.appendChild(text);
+                div.appendChild(time);
+                container.appendChild(div);
+            });
+        }
+
+        // --- Memory Modal ---
+        function openMemoryModal(id = null) {
+            const overlay = document.getElementById('modal-overlay');
+            const titleInput = document.getElementById('modal-mem-title');
+            const catSelect = document.getElementById('modal-mem-category');
+            const descInput = document.getElementById('modal-mem-desc');
+            const idInput = document.getElementById('modal-mem-id');
+            const modalTitle = document.getElementById('modal-title');
+
+            if (id) {
+                const m = state.memories.find(mem => mem.id === id);
+                if (m) {
+                    modalTitle.textContent = 'Edit Memory';
+                    idInput.value = m.id;
+                    titleInput.value = m.title;
+                    catSelect.value = m.category;
+                    descInput.value = m.description;
+                }
+            } else {
+                modalTitle.textContent = 'New Memory';
+                idInput.value = '';
+                titleInput.value = '';
+                catSelect.value = 'Research Decisions';
+                descInput.value = '';
+            }
+
+            overlay.classList.add('active');
+        }
+
+        function closeMemoryModal() {
+            document.getElementById('modal-overlay').classList.remove('active');
+        }
+
+        function saveMemory() {
+            const id = document.getElementById('modal-mem-id').value;
+            const title = document.getElementById('modal-mem-title').value.trim();
+            const category = document.getElementById('modal-mem-category').value;
+            const desc = document.getElementById('modal-mem-desc').value.trim();
+
+            if (!title) { alert('Title is required'); return; }
+
+            if (id) {
+                // Edit
+                const mIndex = state.memories.findIndex(mem => mem.id === id);
+                if (mIndex > -1) {
+                    state.memories[mIndex].title = title;
+                    state.memories[mIndex].category = category;
+                    state.memories[mIndex].description = desc;
+                    logActivity(`Memory edited: "${title}"`);
+                }
+            } else {
+                // New
+                state.memories.push({
+                    id: Date.now().toString(),
+                    title: title,
+                    category: category,
+                    description: desc,
+                    timestamp: new Date().toISOString()
+                });
+                logActivity(`Memory created: "${title}"`);
+            }
+            
+            closeMemoryModal();
+            renderMemories();
+        }
+
+        // --- Backup & Restore ---
+        function exportData() {
+            try {
+                const dataStr = JSON.stringify(state, null, 2);
+                const blob = new Blob([dataStr], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `aldra_backup_${new Date().toISOString().split('T')[0]}.json`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+                logActivity("Data exported successfully.");
+            } catch (e) {
+                alert('Failed to export data.');
+                console.error(e);
+            }
+        }
+
+        function importData() {
+            const fileInput = document.getElementById('file-import');
+            if (!fileInput.files.length) {
+                alert('Please select a JSON file to import.');
+                return;
+            }
+
+            if (!confirm('Warning: This will OVERWRITE all current progress, memories, and logs. Proceed?')) {
+                return;
+            }
+
+            const file = fileInput.files[0];
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const parsed = JSON.parse(e.target.result);
+                    if(parsed && typeof parsed === 'object') {
+                        state.tasks = parsed.tasks || {};
+                        state.memories = parsed.memories || [];
+                        state.activity = parsed.activity || [];
+                        state.lastActivity = parsed.lastActivity || new Date().toISOString();
+                        
+                        saveState();
+                        alert('Data imported successfully!');
+                        location.reload(); // Reload to refresh all views cleanly
+                    } else {
+                        throw new Error("Invalid JSON structure");
+                    }
+                } catch(err) {
+                    alert('Failed to import data. Please ensure it is a valid ALDRA backup JSON file.');
+                    console.error(err);
+                }
+            };
+            reader.readAsText(file);
+        }
+
+        // --- Event Listeners Initialization ---
+        function init() {
+            // Navigation
+            document.querySelectorAll('.nav-item').forEach(nav => {
+                nav.addEventListener('click', (e) => {
+                    switchTab(e.currentTarget.getAttribute('data-target'));
+                });
+            });
+
+            // Memory Handlers
+            document.getElementById('btn-new-memory').addEventListener('click', () => openMemoryModal());
+            document.getElementById('btn-modal-cancel').addEventListener('click', closeMemoryModal);
+            document.getElementById('btn-modal-save').addEventListener('click', saveMemory);
+            document.getElementById('mem-search').addEventListener('input', renderMemories);
+            document.getElementById('mem-filter').addEventListener('change', renderMemories);
+
+            // Backup Handlers
+            document.getElementById('btn-export').addEventListener('click', exportData);
+            document.getElementById('btn-import').addEventListener('click', importData);
+
+            // Initial Load
+            loadState();
+            renderDashboard(); // Render initial active view
+        }
+
+        document.addEventListener('DOMContentLoaded', init);
+
+    </script>
+</body>
+</html>
